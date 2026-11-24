@@ -290,59 +290,6 @@ Las pruebas del resumen verifican valor y propagación de errores con espera
 acotada. Para flujos infinitos o asíncronos, solicita solo la demanda necesaria,
 espera con límites y cancela recursos.
 
-## Ejercicios propuestos
-
-Implementa cada ejercicio en ambos módulos y compara resultados y errores:
-
-1. Busca Luis y comprueba su nombre.
-2. Busca un usuario inexistente sin convertir la ausencia en excepción.
-3. Convierte nombres a mayúsculas.
-4. Filtra productos por un precio configurable.
-5. Calcula el total del pedido 101 con `BigDecimal`.
-6. Cuenta los pedidos de cada usuario.
-7. Añade un usuario sin pedidos y verifica el resumen vacío.
-8. Simula un producto inexistente y verifica el error terminal.
-9. Recupera exclusivamente errores de tipo conocido; propaga los demás.
-10. Simula dos fallos y compara los resultados de uno y dos reintentos.
-11. Introduce un límite temporal para una API lenta simulada.
-12. Compara la salida de `merge` y `concat` con fuentes de distinta latencia.
-13. Solicita eventos por lotes de dos y cancela antes de terminar.
-14. Añade un consumidor tardío y compara fuente fría y caliente.
-15. Comprueba que una segunda suscripción fría repite el trabajo.
-16. Combina nombre y cantidad de pedidos en un DTO inmutable.
-17. Añade una prueba que verifique el orden de productos del resumen.
-18. Investiga cómo adaptar un `Flowable` a `Flux` sin perder demanda.
-19. Crea un endpoint WebFlux que devuelva un `Mono` y otro con `Flux`.
-20. Crea un endpoint Quarkus que devuelva un `Uni` y otro con `Multi`.
-
-Los dos últimos son extensiones externas al laboratorio actual: crea proyectos
-separados con sus dependencias y verifica que no bloquean el event loop.
-
-## Entrevistas técnicas
-
-- **¿En qué se diferencian asíncrono y reactivo?** Asíncrono describe cuándo se
-  completa el trabajo; reactivo describe cómo se componen y consumen señales.
-- **¿Qué activa un pipeline?** Normalmente la suscripción; algunas fuentes
-  calientes pueden emitir independientemente de ella.
-- **¿Qué diferencia `map` de `flatMap`?** `map` transforma un valor; `flatMap`
-  encadena una fuente por valor y puede intercalar resultados.
-- **¿Qué es backpressure?** La coordinación de demanda entre productor y
-  consumidor; no elimina por sí sola el riesgo de sobrecarga externa.
-- **¿Qué diferencia `merge` de `concat`?** `merge` puede intercalar fuentes;
-  `concat` espera que termine una antes de suscribirse a la siguiente.
-- **¿Una secuencia puede continuar tras un error terminal?** No; recuperación
-  y reintento sustituyen o vuelven a suscribir la secuencia según el operador.
-- **¿Qué diferencia una fuente fría de una caliente?** La fría suele ejecutar
-  por suscriptor; la caliente puede compartir emisiones y perder eventos previos.
-- **¿`subscribeOn` y `observeOn` hacen lo mismo?** No: el primero afecta la
-  suscripción; el segundo desplaza las notificaciones posteriores.
-- **¿Por qué no bloquear un event loop?** Porque impide atender otras tareas y
-  degrada la concurrencia. Usa clientes no bloqueantes o desplaza el bloqueo.
-- **¿Por qué un reintento puede ser peligroso?** Puede repetir efectos laterales;
-  considera idempotencia, límites y esperas entre intentos.
-- **¿Qué hacen `cancel` y `dispose`?** Solicitan detener la suscripción y
-  liberar recursos; el trabajo ya iniciado puede necesitar cooperación.
-
 ## Referencias
 
 - [Reactive Streams](https://www.reactive-streams.org/)
