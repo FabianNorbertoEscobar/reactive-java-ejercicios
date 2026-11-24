@@ -1,0 +1,21 @@
+package dev.reactivelab.mutiny.examples;
+
+import io.smallrye.mutiny.*;
+
+/**
+ * 04: Emitir eventos.
+ *
+ *   eventos -> suscriptor -> fin
+ *
+ * 1. Se prepara la fuente y el operador indicado.
+ * 2. La suscripción inicia el trabajo; el consumidor observa el resultado.
+ * 3. Compara esta clase con su homónima del otro módulo.
+ */
+public final class ObservableExample {
+    private ObservableExample() {}
+
+    public static void main(String[] args) {
+        Multi.createFrom().items("creado", "pagado", "enviado")
+                .collect().asList().await().indefinitely().forEach(System.out::println);
+    }
+}
