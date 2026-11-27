@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 /** Comprueba que los ejemplos por concepto producen la salida documentada en su Javadoc. */
@@ -44,10 +47,19 @@ class ConceptExamplesTest {
     }
 
     @Test
-    void parallelTasksOverlapInTime() {
-        var parallel = ConcurrencyExample.parallelTasks();
+    void parallelTasksOverlapInTime() throws Exception {
+        var started = new CountDownLatch(2);
+        var release = new CountDownLatch(1);
+        var parallelResult = CompletableFuture.supplyAsync(() -> ConcurrencyExample.parallelTasks(started, release));
+        boolean bothStarted;
+        try {
+            bothStarted = started.await(10, TimeUnit.SECONDS);
+        } finally {
+            release.countDown();
+        }
+        assertTrue(bothStarted, "ambas tareas deberían empezar antes de liberarlas");
+        var parallel = parallelResult.get(10, TimeUnit.SECONDS);
         assertEquals("[A, B]", parallel.result());
-        assertTrue(parallel.millis() < 550, "dos tareas de 300 ms deberían solaparse: " + parallel.millis());
         assertEquals(List.of(2, 4, 6, 8), ConcurrencyExample.concurrentFlatMap());
         assertEquals("valor alternativo", ConcurrencyExample.recoveredError());
         assertEquals("fallo en B", ConcurrencyExample.propagatedError());

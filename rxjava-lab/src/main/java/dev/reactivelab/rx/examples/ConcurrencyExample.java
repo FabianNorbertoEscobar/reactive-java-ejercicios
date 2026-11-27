@@ -4,6 +4,7 @@ import io.reactivex.rxjava3.core.*;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * 24: Asincronismo y concurrencia con schedulers: subscribeOn, observeOn,
@@ -45,8 +46,17 @@ public final class ConcurrencyExample {
     }
 
     private static Single<String> task(String name, long millis) {
+        return task(name, millis, null, null);
+    }
+
+    private static Single<String> task(
+            String name, long millis, CountDownLatch started, CountDownLatch release) {
         return Single.<String>create(emitter -> {
             try {
+                if (started != null) {
+                    started.countDown();
+                    release.await();
+                }
                 Thread.sleep(millis);
                 emitter.onSuccess(name);
             } catch (InterruptedException e) {
@@ -57,8 +67,15 @@ public final class ConcurrencyExample {
     }
 
     public static Parallel parallelTasks() {
+        return parallelTasks(null, null);
+    }
+
+    static Parallel parallelTasks(CountDownLatch started, CountDownLatch release) {
         long start = System.nanoTime();
-        var result = Single.zip(task("A", 300), task("B", 300), (a, b) -> "[" + a + ", " + b + "]").blockingGet();
+        var result = Single.zip(
+                task("A", 300, started, release),
+                task("B", 300, started, release),
+                (a, b) -> "[" + a + ", " + b + "]").blockingGet();
         return new Parallel(result, (System.nanoTime() - start) / 1_000_000);
     }
 

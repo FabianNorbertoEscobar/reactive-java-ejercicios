@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -63,16 +64,36 @@ public final class ConcurrencyExample {
     }
 
     private static Uni<String> task(String name, long millis, Executor executor) {
+        return task(name, millis, executor, null, null);
+    }
+
+    private static Uni<String> task(
+            String name, long millis, Executor executor, CountDownLatch started, CountDownLatch release) {
         return Uni.createFrom().item(() -> {
+            if (started != null) {
+                started.countDown();
+                try {
+                    release.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
             sleep(millis);
             return name;
         }).runSubscriptionOn(executor);
     }
 
     public static Parallel parallelTasks() {
+        return parallelTasks(null, null);
+    }
+
+    static Parallel parallelTasks(CountDownLatch started, CountDownLatch release) {
         try (var workers = pool("worker")) {
             long start = System.nanoTime();
-            var result = Uni.combine().all().unis(task("A", 300, workers), task("B", 300, workers))
+            var result = Uni.combine().all().unis(
+                            task("A", 300, workers, started, release),
+                            task("B", 300, workers, started, release))
                     .with((a, b) -> "[" + a + ", " + b + "]").await().indefinitely();
             return new Parallel(result, (System.nanoTime() - start) / 1_000_000);
         }
