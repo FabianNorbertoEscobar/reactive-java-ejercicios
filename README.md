@@ -124,6 +124,24 @@ tipos. Este proyecto es Java puro: no inicia Quarkus ni necesita su runtime.
 | Reintentar | `retry` | `retry` | `onFailure().retry()` |
 | Hilo de suscripción | `subscribeOn` | `subscribeOn` | `runSubscriptionOn` |
 | Hilo de señales posteriores | `observeOn` | `publishOn` | `emitOn` |
+| Crear desde valores | `just` / `fromIterable` / `range(inicio, cantidad)` | `just` / `fromIterable` / `range` | `items` / `iterable` / `range(inicio, finExclusivo)` |
+| Vacío / error | `empty` / `error` | `empty` / `error` | `empty` / `failure` |
+| Emisión manual (frío) | `create` / `generate` | `create` / `generate` | `emitter` / `generator` |
+| Transformación en serie | `concatMap` | `concatMap` | `transformToUniAndConcatenate` / `transformToMultiAndConcatenate` |
+| Transformación concurrente | `flatMap(f, maxConcurrency)` | `flatMap` | `transformToUniAndMerge` / `transformToUni(...).merge(n)` |
+| Acumular / agrupar | `scan` / `buffer` | `scan` / `buffer` | `onItem().scan` / `group().intoLists().of(n)` |
+| Tomar / saltar | `take` / `skip` / `takeWhile` | `take` / `skip` / `takeWhile` | `select().first(n)` / `skip().first(n)` / `select().first(predicado)` |
+| Sin repetidos | `distinct` | `distinct` | `select().distinct()` |
+| Primero / último | `firstElement` / `lastOrError` | `next` / `last` | `collect().first()` / `select().last()` |
+| Mezclar / concatenar | `merge` / `concat` | `merge` / `concat` | `Multi.createBy().merging()` / `concatenating()` |
+| Último de cada fuente | `combineLatest` | `combineLatest` | `Multi.createBy().combining().streams(...).latestItems()` |
+| Fuente caliente | `PublishSubject` | `Sinks.many().multicast()` | `BroadcastProcessor` |
+| Con valor inicial | `BehaviorSubject` | `Sinks...replay().limit(1)` | `replaying().upTo(1).ofSeedAndMulti` |
+| Con historial | `ReplaySubject` | `Sinks.many().replay()` | `Multi.createBy().replaying().ofMulti` |
+| Solo el último al completar | `AsyncSubject` | — | `replaying().upTo(1).ofMulti(multi.select().last())` |
+| Exceso de eventos | `onBackpressureBuffer/Drop/Latest` | `onBackpressureBuffer/Drop/Latest` | `onOverflow().buffer()/drop()/dropPreviousItems()` |
+| Valor alternativo / fuente alternativa | `onErrorReturn` / `onErrorResumeNext` | `onErrorReturn` / `onErrorResume` | `onFailure().recoverWithItem` / `recoverWithMulti` |
+| Reintento con política | `retryWhen` | `retryWhen` | `onFailure().retry().when(...)` / `withBackOff(...)` |
 
 ### Single vs Uni
 
@@ -214,6 +232,15 @@ los nombres de los hilos dependen de la ejecución.
 | 17 | `SubjectsExample` | 1. Conecta dos consumidores. 2. Publica un evento. 3. Ambos lo reciben; completa la fuente. |
 | 18 | `TransformToMultiExample` | 1. Busca un pedido. 2. Aplana sus ids en una secuencia. 3. Consulta e imprime sus productos. |
 | 19 | `MultiTransformationsExample` | 1. Emite ids. 2. Encadena consultas individuales en orden. 3. Transforma los productos a nombres. |
+| 20 | `CreationOperatorsExample` | 1. Crea fuentes con `just/items`, `fromIterable/iterable`, `range`, `empty`, `error/failure` y `create/emitter`. 2. Recógelas en listas. 3. Observa `range: [1, 2, 3, 4, 5]` y la diferencia entre el segundo argumento de `range` en cada biblioteca. |
+| 21 | `TransformationOperatorsExample` | 1. Aplica `map`, `flatMap`, `concatMap`, `scan`, `buffer` y `toMap`. 2. Con retardos distintos, `flatMap` entrega `[2, 1]` y `concatMap` `[1, 2]`. |
+| 22 | `FilteringOperatorsExample` | 1. Aplica `filter`, `take`, `skip`, `distinct`, `first`, `last`, `takeWhile` y `skipWhile` a `1 2 2 3 4 5`. 2. Compara `Maybe`/`firstElement` con `collect().first()` (`null` si está vacío). |
+| 23 | `CombiningOperatorsExample` | 1. `merge` entrega `[B1, A1]`; `concat`, `[A1, B1]`. 2. `zip` empareja por posición. 3. `combineLatest` produce `[1x, 2x, 2y]` con fuentes controladas a mano. |
+| 24 | `ConcurrencyExample` | 1. Observa los hilos tras `subscribeOn/runSubscriptionOn` y `observeOn/emitOn`. 2. Dos tareas de 300 ms en paralelo tardan ~300 ms. 3. Recupera o propaga un fallo asíncrono. |
+| 25 | `SubjectTypesExample` | 1. Publica con A suscrito y B tardío. 2. Compara `Publish`, `Behavior`, `Replay` y `Async` con `BroadcastProcessor` y `replaying()`. |
+| 26 | `ManualEmissionExample` | 1. `create`/`emitter` es frío: se ejecuta por suscriptor. 2. Libera recursos al cancelar. 3. `generate`/`generator` emite bajo demanda; `UnicastProcessor` acumula hasta tener suscriptor. |
+| 27 | `BackpressureStrategiesExample` | 1. Una fuente caliente sin demanda falla. 2. Compara `buffer`, `drop` y `latest` (`onOverflow` en Mutiny). 3. Una fuente fría respeta `request(n)`. |
+| 28 | `ErrorOperatorsExample` | 1. `onError` termina el flujo tras `[10, 5]`. 2. Recupera con valor o fuente alternativa. 3. `retry`, `retryWhen` / `retry().when` y `withBackOff`. 4. Un fallo en una cadena llega al manejador final. |
 
 `transformToUni` se demuestra en `FlatMapExample`; `transformToMulti` en
 `TransformToMultiExample`. `runSubscriptionOn` y `emitOn` se ven juntos en
@@ -221,6 +248,29 @@ los nombres de los hilos dependen de la ejecución.
 suscriptores tardíos; `PublishSubject` y `BroadcastProcessor` tampoco tienen
 contratos idénticos de demanda. No emitas concurrentemente en un subject sin
 considerar la serialización.
+
+## Matriz de cobertura
+
+Cada tema tiene una clase homónima en `rxjava-lab` y en `mutiny-lab`
+(también hay una prueba por módulo en `ConceptExamplesTest`).
+
+| Tema | Ejemplos | Estado |
+|---|---|---|
+| A. Tipos (`Observable`, `Single`, `Completable`, `Flowable` / `Multi`, `Uni`) | 1-5 y tablas de equivalencias | Completo |
+| B. Creación | 20 | Completo |
+| C. Transformación | 6, 7, 18, 19, 21 | Completo |
+| D. Filtrado | 8, 22 | Completo |
+| E. Combinación | 9, 10, 11, 23 | Completo |
+| F. Asincronismo y concurrencia | 14, 24 | Completo |
+| G. Subjects y emisión manual | 16, 17, 25, 26 | Completo |
+| H. Backpressure | 5, 15, 27 | Completo |
+| I. Errores | 12, 13, 28 | Completo |
+
+Diferencias a tener presentes: Mutiny no tiene `Observable` (todo `Multi` soporta
+demanda), ni `Maybe` (se usa `Uni` con `null` u `Optional`), ni schedulers propios
+(usa `Executor` de Java), ni Subjects (usa procesadores o `replaying()`).
+Los `main` de Mutiny que usan retardos cierran sus hilos por defecto con
+`ExampleRuntime`, solo necesario en programas de consola.
 
 ## Caso de uso: resumen de pedidos
 
