@@ -45,9 +45,14 @@ public final class ConcurrencyExample {
     }
 
     private static Single<String> task(String name, long millis) {
-        return Single.fromCallable(() -> {
-            Thread.sleep(millis);
-            return name;
+        return Single.<String>create(emitter -> {
+            try {
+                Thread.sleep(millis);
+                emitter.onSuccess(name);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                emitter.tryOnError(e);
+            }
         }).subscribeOn(Schedulers.io());
     }
 
